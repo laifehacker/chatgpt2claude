@@ -46,9 +46,35 @@ Import complete!
 
 ### 4. Connect to Claude
 
+**Claude Code (recommended — easiest):**
+
+```bash
+claude mcp add chatgpt2claude -- chatgpt2claude serve
+```
+
+That's it. No config files to edit.
+
 **Claude Desktop:**
 
-Add this to your Claude Desktop config file:
+> **WARNING: Back up your config file before editing!**
+>
+> Claude Desktop's `claude_desktop_config.json` is fragile. If you introduce **any** JSON syntax error (missing comma, trailing comma, unmatched bracket), Claude Desktop will silently **delete your entire config file** on next launch — including all your other MCP servers. This is not recoverable.
+>
+> **Before you edit, make a backup:**
+> ```bash
+> # macOS
+> cp ~/Library/Application\ Support/Claude/claude_desktop_config.json ~/claude_config_backup.json
+>
+> # Windows (PowerShell)
+> Copy-Item "$env:APPDATA\Claude\claude_desktop_config.json" "$HOME\claude_config_backup.json"
+>
+> # Linux
+> cp ~/.config/Claude/claude_desktop_config.json ~/claude_config_backup.json
+> ```
+
+If you already have a config file with other MCP servers, **merge** the `chatgpt2claude` entry into your existing `mcpServers` object. Don't replace the whole file.
+
+If this is your first MCP server, create the file with this content:
 
 ```json
 {
@@ -61,18 +87,12 @@ Add this to your Claude Desktop config file:
 }
 ```
 
+Validate your JSON before saving (paste it into [jsonlint.com](https://jsonlint.com) if unsure). Then **fully quit** Claude Desktop (not just close the window) and reopen it.
+
 Config file locations:
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 - **Linux**: `~/.config/Claude/claude_desktop_config.json`
-
-Then restart Claude Desktop.
-
-**Claude Code:**
-
-```bash
-claude mcp add chatgpt2claude -- chatgpt2claude serve
-```
 
 ### 5. Done!
 
