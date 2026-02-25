@@ -71,7 +71,7 @@ def chunk_conversation(conversation: Conversation) -> list[ConversationChunk]:
 
     step = max(1, CHUNK_TURN_PAIRS - CHUNK_OVERLAP_PAIRS)
 
-    for window_start in range(0, len(turns), step):
+    for chunk_num, window_start in enumerate(range(0, len(turns), step)):
         window_end = min(window_start + CHUNK_TURN_PAIRS, len(turns))
         window = turns[window_start:window_end]
 
@@ -95,7 +95,7 @@ def chunk_conversation(conversation: Conversation) -> list[ConversationChunk]:
             ConversationChunk(
                 conversation_id=conversation.id,
                 conversation_title=conversation.title,
-                chunk_index=len(chunks) - 1,  # 0-based for content chunks
+                chunk_index=chunk_num,
                 text=text,
                 first_timestamp=min(timestamps) if timestamps else None,
                 last_timestamp=max(timestamps) if timestamps else None,

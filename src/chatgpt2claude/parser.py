@@ -61,21 +61,15 @@ def parse_conversation(conv: dict[str, Any]) -> Conversation | None:
         if msg_data is None:
             continue
 
-        author = msg_data.get("author", {})
+        author = msg_data.get("author") or {}
         role = author.get("role", "")
 
-        # Skip system messages (unless user-created) and tool messages
-        if role == "system":
-            metadata = msg_data.get("metadata", {})
-            if not metadata.get("is_user_system_message"):
-                continue
-        if role == "tool":
-            continue
+        # Skip all non-user/non-assistant roles
         if role not in ("user", "assistant"):
             continue
 
-        content_data = msg_data.get("content", {})
-        parts = content_data.get("parts", [])
+        content_data = msg_data.get("content") or {}
+        parts = content_data.get("parts") or []
         text = _extract_text(parts)
 
         if not text:
@@ -85,7 +79,7 @@ def parse_conversation(conv: dict[str, Any]) -> Conversation | None:
 
         # Grab model_slug from first assistant message
         if role == "assistant" and model_slug is None:
-            model_slug = msg_data.get("metadata", {}).get("model_slug")
+            model_slug = (msg_data.get("metadata") or {}).get("model_slug")
 
         messages.append(Message(role=role, content=text, timestamp=timestamp))
 

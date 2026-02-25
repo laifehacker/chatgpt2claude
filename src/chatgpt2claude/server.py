@@ -30,13 +30,23 @@ mcp = FastMCP(
     ),
 )
 
+# Singleton stores — reused across tool calls
+_store: ConversationStore | None = None
+_vectorstore: ConversationVectorStore | None = None
+
 
 def _get_store() -> ConversationStore:
-    return ConversationStore(SQLITE_PATH)
+    global _store
+    if _store is None:
+        _store = ConversationStore(SQLITE_PATH)
+    return _store
 
 
 def _get_vectorstore() -> ConversationVectorStore:
-    return ConversationVectorStore(CHROMA_PATH)
+    global _vectorstore
+    if _vectorstore is None:
+        _vectorstore = ConversationVectorStore(CHROMA_PATH)
+    return _vectorstore
 
 
 def _format_ts(ts: float | None) -> str:
@@ -75,7 +85,6 @@ def search_conversations(query: str, limit: int = 10) -> str:
 
     # Keyword search via SQLite FTS5
     keyword_results = store.search_keyword(query, limit=limit)
-    store.close()
 
     # Merge results: combine both, deduplicate by conversation_id
     scored: dict[str, dict] = {}
@@ -94,7 +103,6 @@ def search_conversations(query: str, limit: int = 10) -> str:
         conv_id = r["id"]
         if conv_id in scored:
             scored[conv_id]["keyword_score"] = 1.0
-            # Prefer keyword snippet if available
             if r.get("snippet"):
                 scored[conv_id]["keyword_snippet"] = r["snippet"]
         else:
@@ -145,7 +153,6 @@ def get_conversation(conversation_id: str) -> str:
 
     store = _get_store()
     conv = store.get_conversation(conversation_id)
-    store.close()
 
     if not conv:
         return f"Conversation not found: {conversation_id}"
@@ -167,14 +174,10 @@ def get_conversation(conversation_id: str) -> str:
         role = "**User**" if msg["role"] == "user" else "**ChatGPT**"
         ts = _format_ts(msg["timestamp"]) if msg["timestamp"] else ""
         header = f"{role}" + (f" ({ts})" if ts else "")
-
         content = msg["content"]
-        char_count += len(content)
 
-        if char_count > max_chars:
-            lines.append(f"{header}:")
-            remaining = max_chars - (char_count - len(content))
-            lines.append(content[:remaining])
+        remaining_budget = max_chars - char_count
+        if remaining_budget <= 0:
             lines.append(
                 f"\n... [Truncated — conversation exceeds {max_chars:,} chars. "
                 f"Total: {conv['message_count']} messages]"
@@ -182,6 +185,16 @@ def get_conversation(conversation_id: str) -> str:
             break
 
         lines.append(f"{header}:")
+
+        if len(content) > remaining_budget:
+            lines.append(content[:remaining_budget])
+            lines.append(
+                f"\n... [Truncated — conversation exceeds {max_chars:,} chars. "
+                f"Total: {conv['message_count']} messages]"
+            )
+            break
+
+        char_count += len(content)
         lines.append(content)
         lines.append("")
 
@@ -207,7 +220,6 @@ def list_conversations(
 
     store = _get_store()
     conversations = store.list_conversations(limit=limit, offset=offset, keyword=keyword)
-    store.close()
 
     if not conversations:
         if keyword:
@@ -247,7 +259,6 @@ def get_context_summary(conversation_id: str) -> str:
 
     store = _get_store()
     conv = store.get_conversation(conversation_id)
-    store.close()
 
     if not conv:
         return f"Conversation not found: {conversation_id}"
@@ -298,7 +309,6 @@ def get_stats() -> str:
 
     store = _get_store()
     stats = store.get_stats()
-    store.close()
 
     vectorstore = _get_vectorstore()
     chunk_count = vectorstore.count()

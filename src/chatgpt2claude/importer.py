@@ -114,7 +114,8 @@ def import_chatgpt_export(zip_path: str, force: bool = False) -> dict:
         click.echo(f"  Skipped:  {skipped} (already imported, use --force to re-import)")
     click.echo(f"  Chunks:   {total_chunks} (indexed for semantic search)")
 
-    stats = ConversationStore(SQLITE_PATH).get_stats()
+    with ConversationStore(SQLITE_PATH) as stats_store:
+        stats = stats_store.get_stats()
     if stats["date_range_start"]:
         click.echo(
             f"  Range:    {stats['date_range_start']} → {stats['date_range_end']}"

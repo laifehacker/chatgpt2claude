@@ -146,15 +146,26 @@ class ConversationStore:
     ) -> list[dict]:
         """List conversations, optionally filtered by keyword (FTS5)."""
         if keyword:
-            rows = self.conn.execute(
-                """SELECT c.id, c.title, c.create_time, c.message_count, c.model_slug
-                   FROM conversations c
-                   JOIN conversations_fts fts ON c.rowid = fts.rowid
-                   WHERE conversations_fts MATCH ?
-                   ORDER BY c.create_time DESC
-                   LIMIT ? OFFSET ?""",
-                (keyword, limit, offset),
-            ).fetchall()
+            try:
+                rows = self.conn.execute(
+                    """SELECT c.id, c.title, c.create_time, c.message_count, c.model_slug
+                       FROM conversations c
+                       JOIN conversations_fts fts ON c.rowid = fts.rowid
+                       WHERE conversations_fts MATCH ?
+                       ORDER BY c.create_time DESC
+                       LIMIT ? OFFSET ?""",
+                    (keyword, limit, offset),
+                ).fetchall()
+            except sqlite3.OperationalError:
+                # Invalid FTS5 query syntax — fall back to LIKE search
+                rows = self.conn.execute(
+                    """SELECT id, title, create_time, message_count, model_slug
+                       FROM conversations
+                       WHERE title LIKE ? OR full_text LIKE ?
+                       ORDER BY create_time DESC
+                       LIMIT ? OFFSET ?""",
+                    (f"%{keyword}%", f"%{keyword}%", limit, offset),
+                ).fetchall()
         else:
             rows = self.conn.execute(
                 """SELECT id, title, create_time, message_count, model_slug
@@ -168,18 +179,21 @@ class ConversationStore:
 
     def search_keyword(self, query: str, limit: int = 20) -> list[dict]:
         """Full-text search using FTS5 MATCH."""
-        rows = self.conn.execute(
-            """SELECT c.id, c.title, c.create_time, c.message_count,
-                      snippet(conversations_fts, 1, '>>>', '<<<', '...', 40) as snippet,
-                      rank
-               FROM conversations_fts fts
-               JOIN conversations c ON c.rowid = fts.rowid
-               WHERE conversations_fts MATCH ?
-               ORDER BY rank
-               LIMIT ?""",
-            (query, limit),
-        ).fetchall()
-        return [dict(r) for r in rows]
+        try:
+            rows = self.conn.execute(
+                """SELECT c.id, c.title, c.create_time, c.message_count,
+                          snippet(conversations_fts, 1, '>>>', '<<<', '...', 40) as snippet,
+                          rank
+                   FROM conversations_fts fts
+                   JOIN conversations c ON c.rowid = fts.rowid
+                   WHERE conversations_fts MATCH ?
+                   ORDER BY rank
+                   LIMIT ?""",
+                (query, limit),
+            ).fetchall()
+            return [dict(r) for r in rows]
+        except sqlite3.OperationalError:
+            return []
 
     def get_stats(self) -> dict:
         """Get overall database statistics."""
@@ -214,6 +228,12 @@ class ConversationStore:
 
     def close(self):
         self.conn.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
 
 
 def _format_ts(ts: float | None) -> str | None:
