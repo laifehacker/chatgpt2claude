@@ -58,9 +58,9 @@ That's it. No config files to edit.
 
 > **WARNING: Back up your config file before editing!**
 >
-> Claude Desktop's `claude_desktop_config.json` is fragile. If you introduce **any** JSON syntax error (missing comma, trailing comma, unmatched bracket), Claude Desktop will silently **delete your entire config file** on next launch — including all your other MCP servers. This is not recoverable.
+> Claude Desktop's `claude_desktop_config.json` is extremely fragile. If you introduce **any** JSON syntax error — a missing comma, a trailing comma, an unmatched bracket, anything — **Claude Desktop will silently delete your entire config file** on next launch. All your MCP server configurations will be gone. This is not recoverable without a backup.
 >
-> **Before you edit, make a backup:**
+> **Step 1: Make a backup FIRST:**
 > ```bash
 > # macOS
 > cp ~/Library/Application\ Support/Claude/claude_desktop_config.json ~/claude_config_backup.json
@@ -71,8 +71,24 @@ That's it. No config files to edit.
 > # Linux
 > cp ~/.config/Claude/claude_desktop_config.json ~/claude_config_backup.json
 > ```
+>
+> **Step 2: Edit carefully.** If you already have other MCP servers configured, you need to **merge** — add the `chatgpt2claude` entry inside your existing `mcpServers` object. Do NOT replace the whole file.
+>
+> **Step 3: Validate your JSON** before saving. Paste it into [jsonlint.com](https://jsonlint.com) to check for syntax errors. One misplaced comma = your entire config gets wiped.
 
-If you already have a config file with other MCP servers, **merge** the `chatgpt2claude` entry into your existing `mcpServers` object. Don't replace the whole file.
+If you already have a config file with other `mcpServers`, add `chatgpt2claude` to the existing object:
+
+```json
+{
+  "mcpServers": {
+    "your-existing-server": { "...": "..." },
+    "chatgpt2claude": {
+      "command": "chatgpt2claude",
+      "args": ["serve"]
+    }
+  }
+}
+```
 
 If this is your first MCP server, create the file with this content:
 
@@ -87,7 +103,7 @@ If this is your first MCP server, create the file with this content:
 }
 ```
 
-Validate your JSON before saving (paste it into [jsonlint.com](https://jsonlint.com) if unsure). Then **fully quit** Claude Desktop (not just close the window) and reopen it.
+After saving, **fully quit** Claude Desktop (Cmd+Q / Alt+F4, not just close the window) and reopen it.
 
 Config file locations:
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
