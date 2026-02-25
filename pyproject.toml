@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "chatgpt2claude"
+version = "0.1.0"
+description = "Search your ChatGPT conversation history from Claude"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Reinier van Eijk" },
+]
+keywords = ["chatgpt", "claude", "mcp", "ai", "conversations", "search"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "mcp>=1.2.0",
+    "chromadb>=0.5.0",
+    "click>=8.0",
+    "pydantic>=2.0",
+]
+
+[project.scripts]
+chatgpt2claude = "chatgpt2claude.cli:cli"
+
+[project.urls]
+Homepage = "https://github.com/reiniervaneijk/chatgpt2claude"
+Repository = "https://github.com/reiniervaneijk/chatgpt2claude"
+Issues = "https://github.com/reiniervaneijk/chatgpt2claude/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/chatgpt2claude"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
