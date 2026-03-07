@@ -24,20 +24,116 @@ def cli():
 
 
 @cli.command("import")
-@click.argument("zip_path", type=click.Path(exists=True))
+@click.argument("input_path", type=click.Path(exists=True))
 @click.option("--force", is_flag=True, help="Re-import conversations that already exist")
-def import_cmd(zip_path: str, force: bool):
-    """Import a ChatGPT data export ZIP file.
+def import_cmd(input_path: str, force: bool):
+    """Import ChatGPT conversations from a ZIP file or markdown export.
 
-    Get your export from ChatGPT: Settings → Data Controls → Export Data.
-    You'll receive a ZIP file containing your conversations.
+    \b
+    Supported formats:
+      - ZIP file from ChatGPT (Settings → Data Controls → Export Data)
+      - Markdown files from chatgptexporter (single .md file or folder)
 
-    Example:
-        chatgpt2claude import ~/Downloads/chatgpt-2024-01-15.zip
+    \b
+    Examples:
+        chatgpt2claude import ~/Downloads/chatgpt-export.zip
+        chatgpt2claude import ~/Downloads/conversations.md
+        chatgpt2claude import ~/Downloads/chatgpt-markdown-folder/
     """
     from .importer import import_chatgpt_export
 
-    import_chatgpt_export(zip_path, force=force)
+    import_chatgpt_export(input_path, force=force)
+
+
+@cli.command()
+@click.option(
+    "--token",
+    default=None,
+    help="ChatGPT Bearer token (will prompt if not provided)",
+)
+@click.option(
+    "--delay",
+    default=5.0,
+    show_default=True,
+    help="Seconds between requests (higher = safer)",
+)
+@click.option(
+    "--output",
+    default=None,
+    type=click.Path(),
+    help="Output ZIP path (default: ~/.chatgpt2claude/fetch/export.zip)",
+)
+@click.option(
+    "--auto-import",
+    is_flag=True,
+    help="Automatically import after fetching",
+)
+@click.option(
+    "--fresh",
+    is_flag=True,
+    help="Clear previous progress and start from scratch",
+)
+def fetch(token: str | None, delay: float, output: str | None, auto_import: bool, fresh: bool):
+    """Fetch conversations directly from the ChatGPT backend API.
+
+    Use this when the normal "Export Data" feature is unavailable
+    (e.g., on ChatGPT Teams/Business accounts).
+
+    \b
+    How to get your token:
+      1. Open chatgpt.com in your browser and log in
+      2. Open DevTools (F12) → Network tab
+      3. Refresh the page or send any message
+      4. Find a request to backend-api/conversation
+      5. Copy the value from the Authorization header
+         (the part after 'Bearer ')
+
+    \b
+    Examples:
+      chatgpt2claude fetch
+      chatgpt2claude fetch --delay 10 --auto-import
+      chatgpt2claude fetch --fresh
+    """
+    from .fetcher import ChatGPTFetcher, clear_fetch_progress
+
+    if fresh:
+        clear_fetch_progress()
+
+    if not token:
+        click.echo(
+            "\n"
+            "To get your token:\n"
+            "  1. Open chatgpt.com → log in\n"
+            "  2. DevTools (F12) → Network tab\n"
+            "  3. Refresh or send a message\n"
+            "  4. Find a backend-api request\n"
+            "  5. Copy the Authorization header value\n"
+            "     (everything after 'Bearer ')\n"
+        )
+        token = click.prompt("Paste your ChatGPT Bearer token", hide_input=True)
+
+    token = token.strip()
+
+    fetcher = ChatGPTFetcher(token=token, delay=delay)
+    zip_path = fetcher.fetch_all()
+
+    if output:
+        import shutil
+
+        shutil.copy2(str(zip_path), output)
+        zip_path = Path(output)
+        click.echo(f"Export copied to: {zip_path}")
+
+    if auto_import:
+        click.echo("\nAuto-importing into chatgpt2claude...")
+        from .importer import import_chatgpt_export
+
+        import_chatgpt_export(str(zip_path))
+    else:
+        click.echo(
+            f"\nTo import, run:\n"
+            f"  chatgpt2claude import {zip_path}\n"
+        )
 
 
 @cli.command()

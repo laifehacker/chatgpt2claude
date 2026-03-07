@@ -10,9 +10,13 @@ Everything runs locally. No API keys needed. Your data never leaves your machine
 
 ### 1. Export your ChatGPT data
 
-Go to [ChatGPT](https://chat.openai.com) → **Settings** → **Data Controls** → **Export Data** → **Confirm export**.
+**Option A: Standard export (personal accounts)**
 
-You'll receive an email with a download link. Download the ZIP file.
+Go to [ChatGPT](https://chat.openai.com) → **Settings** → **Data Controls** → **Export Data** → **Confirm export**. You'll receive an email with a download link.
+
+**Option B: Markdown export (Teams/Business accounts)**
+
+If the standard export is unavailable (common on Teams accounts), use [chatgptexporter](https://github.com/pionxzh/chatgpt-exporter) to batch-download your conversations as markdown files.
 
 ### 2. Install chatgpt2claude
 
@@ -28,8 +32,18 @@ uv tool install chatgpt2claude
 
 ### 3. Import your data
 
+**From ZIP (standard export):**
 ```bash
 chatgpt2claude import ~/Downloads/your-chatgpt-export.zip
+```
+
+**From markdown (chatgptexporter):**
+```bash
+# Single file
+chatgpt2claude import ~/Downloads/conversations.md
+
+# Folder with multiple .md files
+chatgpt2claude import ~/Downloads/chatgpt-markdown-export/
 ```
 
 You'll see a progress bar as your conversations are indexed:
@@ -121,12 +135,13 @@ Ask Claude things like:
 ## CLI Commands
 
 ```bash
-chatgpt2claude import <zip-file>   # Import a ChatGPT export
-chatgpt2claude import <zip> --force # Re-import (overwrites existing)
-chatgpt2claude stats               # Show import statistics
-chatgpt2claude config              # Print Claude Desktop/Code config
-chatgpt2claude serve               # Start MCP server (used by Claude)
-chatgpt2claude reset               # Delete all imported data
+chatgpt2claude import <zip-or-md>       # Import from ZIP or markdown
+chatgpt2claude import <folder>          # Import folder of .md files
+chatgpt2claude import <path> --force    # Re-import (overwrites existing)
+chatgpt2claude stats                    # Show import statistics
+chatgpt2claude config                   # Print Claude Desktop/Code config
+chatgpt2claude serve                    # Start MCP server (used by Claude)
+chatgpt2claude reset                    # Delete all imported data
 ```
 
 ## MCP Tools
@@ -155,7 +170,7 @@ All data is stored locally in `~/.chatgpt2claude/`.
 
 - Python 3.10 or newer
 - ~100 MB disk space for the embedding model (downloaded on first use)
-- Your ChatGPT data export ZIP file
+- Your ChatGPT data export (ZIP file or markdown files)
 
 ## Troubleshooting
 

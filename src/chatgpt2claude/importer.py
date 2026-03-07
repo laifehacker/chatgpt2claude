@@ -1,4 +1,4 @@
-"""Import pipeline: ZIP extraction → parsing → chunking → storage."""
+"""Import pipeline: ZIP/markdown extraction → parsing → chunking → storage."""
 
 from __future__ import annotations
 
@@ -18,20 +18,11 @@ from .vectorstore import ConversationVectorStore
 logger = logging.getLogger(__name__)
 
 
-def import_chatgpt_export(zip_path: str, force: bool = False) -> dict:
-    """Import a ChatGPT export ZIP file.
-
-    Returns a summary dict with import statistics.
-    """
-    zip_file = Path(zip_path)
-
-    if not zip_file.exists():
-        raise click.ClickException(f"File not found: {zip_path}")
-
+def _load_conversations_from_zip(zip_file: Path):
+    """Load and parse conversations from a ChatGPT export ZIP."""
     if not zipfile.is_zipfile(str(zip_file)):
-        raise click.ClickException(f"Not a valid ZIP file: {zip_path}")
+        raise click.ClickException(f"Not a valid ZIP file: {zip_file}")
 
-    # Extract conversations.json from ZIP
     click.echo("Reading ZIP file...")
     with zipfile.ZipFile(str(zip_file), "r") as zf:
         if "conversations.json" not in zf.namelist():
@@ -48,11 +39,46 @@ def import_chatgpt_export(zip_path: str, force: bool = False) -> dict:
         raise click.ClickException("conversations.json is not a JSON array.")
 
     click.echo(f"Found {len(data)} conversations in export.")
-
-    # Parse conversations
     click.echo("Parsing conversations...")
     conversations = parse_conversations(data)
     click.echo(f"Successfully parsed {len(conversations)} conversations.")
+    return conversations
+
+
+def _load_conversations_from_markdown(md_path: Path):
+    """Load and parse conversations from markdown files (chatgptexporter format)."""
+    from .md_parser import parse_markdown_path
+
+    click.echo(f"Reading markdown files from {md_path}...")
+    conversations = parse_markdown_path(md_path)
+    click.echo(f"Parsed {len(conversations)} conversations from markdown.")
+    return conversations
+
+
+def import_chatgpt_export(input_path: str, force: bool = False) -> dict:
+    """Import a ChatGPT export (ZIP file or markdown folder/file).
+
+    Supports:
+      - Standard ChatGPT export ZIP (conversations.json inside)
+      - Markdown files from chatgptexporter (.md files or folder)
+
+    Returns a summary dict with import statistics.
+    """
+    path = Path(input_path)
+
+    if not path.exists():
+        raise click.ClickException(f"File not found: {input_path}")
+
+    # Detect input type
+    if path.is_dir() or path.suffix == ".md":
+        conversations = _load_conversations_from_markdown(path)
+    elif path.suffix == ".zip" or zipfile.is_zipfile(str(path)):
+        conversations = _load_conversations_from_zip(path)
+    else:
+        raise click.ClickException(
+            f"Unsupported input: {input_path}\n"
+            "Expected a .zip file, .md file, or folder with .md files."
+        )
 
     if not conversations:
         click.echo("No conversations to import.")
@@ -93,7 +119,7 @@ def import_chatgpt_export(zip_path: str, force: bool = False) -> dict:
 
     # Record import metadata
     store.record_import(
-        file_path=str(zip_file),
+        file_path=str(path),
         conversations=imported,
         messages=total_messages,
     )
