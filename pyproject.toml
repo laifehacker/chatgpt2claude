@@ -29,6 +29,7 @@ dependencies = [
     "chromadb>=0.5.0",
     "click>=8.0",
     "pydantic>=2.0",
+    "requests>=2.28.0",
 ]
 
 [project.scripts]
